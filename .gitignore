@@ -1,41 +1,131 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
+# ---------------------------------------------------
+# Logs
+# ---------------------------------------------------
+logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# ---------------------------------------------------
+# Runtime & Dependency
+# ---------------------------------------------------
+node_modules/
+.pnpm/
+.cache/
+.pnpm-debug.log
+*.pid
+*.seed
+*.pid.lock
 
-# vercel
-.vercel
+# ---------------------------------------------------
+# Environment Variables (Never Commit Secrets)
+# ---------------------------------------------------
+.env
+.env.local
+.env.development.local
+.env.production.local
+.env.test.local
+.env.*.local
+!.env.example    # <- allow template env to be committed
 
-# typescript
+# ---------------------------------------------------
+# Next.js Build Output
+# ---------------------------------------------------
+.next/
+out/
+standalone/
+server/
+build/
+
+# ---------------------------------------------------
+# Next.js Cache
+# ---------------------------------------------------
+.next/cache/
+.vercel/
+
+# ---------------------------------------------------
+# Typescript
+# ---------------------------------------------------
 *.tsbuildinfo
-next-env.d.ts
+
+# ---------------------------------------------------
+# OS / IDE Files
+# ---------------------------------------------------
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# JetBrains
+.idea/
+*.iml
+
+# ---------------------------------------------------
+# Testing & Coverage
+# ---------------------------------------------------
+coverage/
+.nyc_output/
+
+# ---------------------------------------------------
+# Debug / Temp Files
+# ---------------------------------------------------
+*.swp
+*.swo
+*.tmp
+
+# ---------------------------------------------------
+# Uploaded or Temporary Assets
+# ---------------------------------------------------
+public/uploads/
+public/temp/
+
+# ---------------------------------------------------
+# Dist / Compiled Output
+# ---------------------------------------------------
+dist/
+tmp/
+temp/
+
+# ---------------------------------------------------
+# Local Scripts (OK to keep, but ignore local build artifacts)
+# ---------------------------------------------------
+scripts/*.log
+scripts/*.tmp
+
+# ---------------------------------------------------
+# Inngest / Build Artifacts
+# ---------------------------------------------------
+.inngest/
+inngest-build/
+
+# ---------------------------------------------------
+# MongoDB (local dev)
+# ---------------------------------------------------
+dump/
+data/db/
+
+# ---------------------------------------------------
+# Yarn / NPM
+# ---------------------------------------------------
+.yarn/*
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+.pnp.*

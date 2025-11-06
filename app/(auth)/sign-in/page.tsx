@@ -1,3 +1,28 @@
+/**
+ * File: app/(auth)/sign-in/page.tsx
+ * Purpose: Client-side sign-in form that authenticates an existing user via email/password.
+ * Exports: <SignIn/> (client component)
+ *
+ * Key ideas:
+ * - Uses React Hook Form (`mode: "onBlur"`) for validation + form state control.
+ * - Submits credentials to the `signInWithEmail` server action.
+ * - On success, user is redirected to the main dashboard (`/`).
+ * - Error handling is surfaced using `sonner` toast notifications.
+ *
+ * @remarks
+ * - Security: password field uses `type="password"` and is never logged.
+ * - UX: `isSubmitting` disables the button and shows an inline loading state.
+ * - Validation:
+ *   - Email uses regex for basic format checking.
+ *   - Password requires a minimum length of 8 characters.
+ * - Navigation: redirect performed using `next/navigation` router.
+ *
+ * @see lib/actions/auth.actions.ts#signInWithEmail
+ * @see components/forms/InputField.tsx
+ * @see components/forms/FooterLink.tsx
+ * @see https://react-hook-form.com/
+ */
+
 "use client";
 
 import { useForm } from "react-hook-form";

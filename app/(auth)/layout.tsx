@@ -1,3 +1,23 @@
+/**
+ * File: app/(auth)/layout.tsx
+ * Purpose: Layout wrapper for the authentication routes (sign-in, sign-up, etc.).
+ * Exports: <Layout/> — server component
+ *
+ * Key ideas:
+ * - Ensures authenticated users are immediately redirected away from auth pages.
+ * - Provides a two-column branded layout with left-side forms and right-side marketing preview.
+ * - Renders nested pages (children) inside a scrollable left panel.
+ * - Always runs on the server, enabling secure session checks.
+ *
+ * @remarks
+ * - Uses Better-Auth to retrieve the session from request headers.
+ * - If the session indicates a logged-in user, Next.js `redirect("/")` prevents access to auth pages.
+ * - The right panel includes a testimonial and dashboard preview as part of onboarding UX.
+ * - `scrollbar-hide-default` and specialized classes provide consistent dark-theme styling.
+ *
+ * @see lib/better-auth/auth.ts
+ */
+
 import { auth } from "@/lib/better-auth/auth";
 import { headers } from "next/headers";
 import Image from "next/image";
@@ -7,6 +27,7 @@ import { redirect } from "next/navigation";
 const Layout = async ({ children }: { children: React.ReactNode }) => {
   const session = await auth.api.getSession({ headers: await headers() });
 
+  // Redirect logged-in users away from auth routes
   if (session?.user) redirect("/");
 
   return (
