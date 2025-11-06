@@ -63,7 +63,7 @@ The codebase is documented with TSDoc + inline comments following the **Style B 
 
 ## 🗂 Project Structure
 
-````bash
+```bash
 📁 project-root/
 ├── app/                      # Next.js App Router (routes, layouts, pages)
 │   ├── (auth)/               # Auth pages (sign-in, sign-up)
@@ -87,6 +87,7 @@ The codebase is documented with TSDoc + inline comments following the **Style B 
 ├── scripts/                  # DB test scripts
 ├── types/                    # Global TypeScript declarations
 └── README.md
+```
 
 ---
 
@@ -110,7 +111,7 @@ The codebase is documented with TSDoc + inline comments following the **Style B 
 git clone https://github.com/Oran01/stock-tracker-app.git
 cd stock-tracker-app
 npm install
-````
+```
 
 ### 2) Environment
 
