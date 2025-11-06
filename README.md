@@ -57,7 +57,7 @@ The codebase is documented with TSDoc + inline comments following the **Style B 
 
 ## 📸 Demo
 
-![Demo Screenshot](./public/images/Untitled.png)
+![Demo Screenshot](./public/assets/images/Untitled.png)
 
 ---
 
