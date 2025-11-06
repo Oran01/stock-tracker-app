@@ -1,3 +1,25 @@
+/**
+ * File: lib/actions/watchlist.actions.ts
+ * Purpose: Server-side actions for CRUD operations on the user watchlist and
+ *          for enriching watchlist items with stock data.
+ * Exports: `getWatchlistSymbolsByEmail`, `addToWatchlist`, `removeFromWatchlist`,
+ *          `getUserWatchlist`, `getWatchlistWithData`
+ *
+ * Key ideas:
+ * - **Server actions** (uses `"use server"` pragma).
+ * - Auth via BetterAuth (`auth.api.getSession`) with `headers()` from Next.js.
+ * - MongoDB/Mongoose data access; `.lean()` + JSON stringify to strip Mongoose docs.
+ * - Revalidation of `/watchlist` after mutations.
+ *
+ * @remarks
+ * - Server-only: do not import into client components.
+ * - Assumes BetterAuth user records are stored in the `user` collection.
+ * - Symbols are normalized to uppercase; company names are trimmed.
+ * - Errors from DB/HTTP are caught and surfaced as generic messages (logged to server).
+ *
+ * @see https://nextjs.org/docs/app/building-your-application/data-fetching/server-actions-and-mutations
+ */
+
 "use server";
 
 import { connectToDatabase } from "@/database/mongoose";
@@ -8,6 +30,17 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getStocksDetails } from "@/lib/actions/finnhub.actions";
 
+/**
+ * Get all watchlist symbols for a given email.
+ * @summary Looks up the BetterAuth user by email and returns their saved symbols.
+ * @param email - User's email address.
+ * @returns Array of ticker symbols (uppercase). Returns `[]` on not found or error.
+ * @remarks
+ * - Uses the raw MongoDB connection from the active Mongoose instance to read the `user` collection.
+ * - Falls back safely (empty array) on any error.
+ * - This helper is used by background jobs (e.g., news summaries) that operate by email.
+ * @throws Never throws (errors are caught and logged).
+ */
 export async function getWatchlistSymbolsByEmail(
   email: string
 ): Promise<string[]> {
@@ -18,7 +51,7 @@ export async function getWatchlistSymbolsByEmail(
     const db = mongoose.connection.db;
     if (!db) throw new Error("MongoDB connection not found");
 
-    // Better Auth stores users in the "user" collection
+    // BetterAuth stores users in the "user" collection; we query it directly by email
     const user = await db
       .collection("user")
       .findOne<{ _id?: unknown; id?: string; email?: string }>({ email });
@@ -36,10 +69,22 @@ export async function getWatchlistSymbolsByEmail(
   }
 }
 
-// Add stock to watchlist
+/**
+ * Add a stock to the authenticated user's watchlist.
+ * @summary Requires a valid BetterAuth session; prevents duplicate symbols.
+ * @param symbol - Stock symbol (will be normalized to uppercase).
+ * @param company - Display name (trimmed).
+ * @returns `{ success: true, message }` on success; `{ success: false, error }` if duplicate.
+ * @remarks
+ * - Authentication: derives the session from request `headers()` via BetterAuth.
+ * - Revalidates the `/watchlist` path to refresh the UI after mutation.
+ * - Duplicate prevention is done via a `findOne` check; consider a unique index on `{userId, symbol}` for stronger guarantees.
+ * @throws May trigger a Next.js redirect to `/sign-in` when unauthenticated; otherwise throws a generic error on DB failure.
+ */
 export const addToWatchlist = async (symbol: string, company: string) => {
   try {
     const session = await auth.api.getSession({
+      // Retrieve request headers for BetterAuth session extraction inside a server action
       headers: await headers(),
     });
     if (!session?.user) redirect("/sign-in");
@@ -62,6 +107,7 @@ export const addToWatchlist = async (symbol: string, company: string) => {
     });
 
     await newItem.save();
+    // Ensure the Watchlist page reflects the latest changes immediately
     revalidatePath("/watchlist");
 
     return { success: true, message: "Stock added to watchlist" };
@@ -71,10 +117,20 @@ export const addToWatchlist = async (symbol: string, company: string) => {
   }
 };
 
-// Remove stock from watchlist
+/**
+ * Remove a stock from the authenticated user's watchlist.
+ * @summary Requires a valid BetterAuth session; deletes by `{ userId, symbol }`.
+ * @param symbol - Stock symbol (will be normalized to uppercase).
+ * @returns `{ success: true, message }` on success.
+ * @remarks
+ * - Revalidates `/watchlist` after deletion.
+ * - Silent if the symbol was not present; no error if nothing was removed.
+ * @throws Redirects to `/sign-in` if unauthenticated; throws generic error on DB failure.
+ */
 export const removeFromWatchlist = async (symbol: string) => {
   try {
     const session = await auth.api.getSession({
+      // Retrieve request headers for BetterAuth session extraction inside a server action
       headers: await headers(),
     });
     if (!session?.user) redirect("/sign-in");
@@ -93,10 +149,19 @@ export const removeFromWatchlist = async (symbol: string) => {
   }
 };
 
-// Get user's watchlist
+/**
+ * Fetch the authenticated user's raw watchlist items.
+ * @summary Returns an array of watchlist documents sorted by `addedAt` (desc).
+ * @returns Plain JSON (Mongoose docs are stripped via `lean()` + `JSON.stringify/parse`).
+ * @remarks
+ * - Use this when you need raw watchlist fields from the DB schema.
+ * - For UI display with pricing/changes, prefer `getWatchlistWithData()`.
+ * @throws Redirects to `/sign-in` if unauthenticated; throws generic error on DB failure.
+ */
 export const getUserWatchlist = async () => {
   try {
     const session = await auth.api.getSession({
+      // Retrieve request headers for BetterAuth session extraction inside a server action
       headers: await headers(),
     });
     if (!session?.user) redirect("/sign-in");
@@ -112,10 +177,21 @@ export const getUserWatchlist = async () => {
   }
 };
 
-// Get user's watchlist with stock data
+/**
+ * Fetch the authenticated user's watchlist with live stock data.
+ * @summary Enriches each watchlist item with current price, change %, market cap, and P/E.
+ * @returns Array of items; fully enriched when data is available, otherwise the original DB item is returned for that symbol. Returns `[]` if none.
+ * @remarks
+ * - Calls `getStocksDetails(symbol)` for each item; on failure, logs a warning and returns the original watchlist item (not fully enriched).
+ * - Consider pagination for large lists (one request per symbol).
+ * - Returns plain JSON objects (no Mongoose prototypes).
+ * @throws Redirects to `/sign-in` if unauthenticated; throws generic error on data/DB failure.
+ * @see {@link getStocksDetails}
+ */
 export const getWatchlistWithData = async () => {
   try {
     const session = await auth.api.getSession({
+      // Retrieve request headers for BetterAuth session extraction inside a server action
       headers: await headers(),
     });
     if (!session?.user) redirect("/sign-in");

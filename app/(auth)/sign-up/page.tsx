@@ -1,3 +1,29 @@
+/**
+ * File: app/(auth)/sign-up/page.tsx
+ * Purpose: Client-side sign-up form that captures user profile + preferences and creates an account.
+ * Exports: <SignUp/> (client component)
+ *
+ * Key ideas:
+ * - Uses React Hook Form for controlled validation + UX (`mode: "onBlur"`).
+ * - Collects auth fields (name, email, password) and personalization (country, goals, risk, industry).
+ * - Submits to `signUpWithEmail` server action; on success, routes to the dashboard (`/`).
+ * - Provides immediate feedback via `sonner` toasts.
+ *
+ * @remarks
+ * - RHF integration:
+ *   - Text inputs use <InputField/> (via `register` + `validation`).
+ *   - Selects use <SelectField/> and <CountrySelectField/> (via `Controller`).
+ * - Accessibility: labels are associated; error text appears under each field.
+ * - UX: default values pre-populate sensible choices to reduce friction.
+ * - Security: password field uses `type="password"`; no password is logged.
+ *
+ * @see lib/actions/auth.actions.ts#signUpWithEmail
+ * @see components/forms/InputField.tsx
+ * @see components/forms/SelectField.tsx
+ * @see components/forms/CountrySelectField.tsx
+ * @see https://react-hook-form.com/
+ */
+
 "use client";
 
 import { Button } from "@/components/ui/button";

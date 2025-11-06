@@ -1,3 +1,21 @@
+/**
+ * File: components/UserDropdown.tsx
+ * Purpose: Authenticated-user menu shown in the navbar. Displays user info,
+ *          provides logout, and exposes navigation items on mobile.
+ * Exports: <UserDropdown />
+ *
+ * Key ideas:
+ * - Uses shadcn/ui DropdownMenu for consistent styling.
+ * - Shows avatar + name; falls back to user initial when no image.
+ * - Logout executes server action `signOut()` and redirects to `/sign-in`.
+ * - On small screens, NavItems are injected inside the dropdown (mobile UX).
+ *
+ * @remarks
+ * - Never import this in server components (uses `use client` + routing).
+ * - `initialStocks` is passed through to NavItems for search suggestions.
+ * - AvatarImage here is static; you can later swap with user.profileImage if added.
+ */
+
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -18,6 +36,21 @@ import { LogOut } from "lucide-react";
 import NavItems from "@/components/NavItems";
 import { signOut } from "@/lib/actions/auth.actions";
 
+/**
+ * UserDropdown
+ * @summary Displays the authenticated user’s avatar, name, and menu actions.
+ *
+ * @param props.user - Authenticated user object (id, name, email).
+ * @param props.initialStocks - Preloaded stock results passed to mobile NavItems.
+ *
+ * @example
+ * <UserDropdown user={session.user} initialStocks={stocks} />
+ *
+ * @remarks
+ * - Logout uses BetterAuth signOut server action; router pushes immediately after.
+ * - NavItems are only rendered inside the dropdown for screens `< sm`.
+ * - Avatar fallback uses the user's first character.
+ */
 const UserDropdown = ({
   user,
   initialStocks,
@@ -27,6 +60,7 @@ const UserDropdown = ({
 }) => {
   const router = useRouter();
 
+  // Log out, then redirect (avoids stale session UI)
   const handelSignOut = async () => {
     await signOut();
     router.push("/sign-in");
@@ -44,6 +78,8 @@ const UserDropdown = ({
               {user.name[0]}
             </AvatarFallback>
           </Avatar>
+
+          {/* Hide name on smaller screens for cleaner UI */}
           <div className="hidden md:flex flex-col items-start">
             <span className="text-base font-medium text-gray-400">
               {user.name}
@@ -77,6 +113,8 @@ const UserDropdown = ({
           Logout
         </DropdownMenuItem>
         <DropdownMenuSeparator className="hidden sm:block bg-gray-600" />
+
+        {/* On mobile, inject navigation items here (desktop has top nav bar) */}
         <nav className="sm:hidden">
           <NavItems initialStocks={initialStocks} />
         </nav>

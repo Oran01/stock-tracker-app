@@ -1,3 +1,21 @@
+/**
+ * File: components/WatchlistButton.tsx
+ * Purpose: Toggle a symbol in/out of the user's watchlist with optimistic UI and debounce.
+ * Exports: <WatchlistButton />
+ *
+ * Key ideas:
+ * - Optimistic UI: flips local state immediately; server call follows.
+ * - Debounced mutations: prevents rapid double-clicks from spamming the API.
+ * - Two render modes:
+ *    - `type="icon"`: star-only control for dense table rows.
+ *    - `type="button"`: label button, optionally with trash icon when removing.
+ *
+ * @remarks
+ * - Clicks call `stopPropagation()` to avoid triggering parent row navigation (e.g., table rows).
+ * - Parent can sync external state via `onWatchlistChange(symbol, isAdded)`.
+ * - Toasts provide user feedback for add/remove actions.
+ */
+
 "use client";
 
 import { useDebounce } from "@/hooks/useDebounce";
@@ -9,9 +27,32 @@ import { Star, Trash2 } from "lucide-react";
 import React, { useMemo, useState } from "react";
 import { toast } from "sonner";
 
-// Minimal WatchlistButton implementation to satisfy page requirements.
-// This component focuses on UI contract only. It toggles local state and
-// calls onWatchlistChange if provided. Styling hooks match globals.css.
+/**
+ * WatchlistButton
+ * @summary UI control that adds/removes a stock from the user's watchlist.
+ *
+ * @param props.symbol - Ticker symbol (e.g., "AAPL").
+ * @param props.company - Human-readable company name (used in toasts).
+ * @param props.isInWatchlist - Initial membership state for optimistic UI.
+ * @param props.showTrashIcon - When `type="button"` and removing, show a trash icon.
+ * @param props.type - "icon" | "button" (defaults to "button").
+ * @param props.onWatchlistChange - Optional callback for parent state sync `(symbol, isAdded)`.
+ * @returns A button that toggles watchlist membership.
+ *
+ * @example
+ * <WatchlistButton
+ *   symbol="AAPL"
+ *   company="Apple Inc."
+ *   isInWatchlist={true}
+ *   type="icon"
+ *   onWatchlistChange={(sym, added) => console.log(sym, added)}
+ * />
+ *
+ * @remarks
+ * - Debounced 300ms to coalesce repeated clicks and reduce API load.
+ * - Optimistic update first; server mutation follows. On server failure, consider adding a rollback.
+ * - Accessibility: supplies `title`/`aria-label` in icon mode for SR users.
+ */
 
 const WatchlistButton = ({
   symbol,
@@ -21,6 +62,7 @@ const WatchlistButton = ({
   type = "button",
   onWatchlistChange,
 }: WatchlistButtonProps) => {
+  // Optimistic local state reflecting current watchlist membership
   const [added, setAdded] = useState<boolean>(!!isInWatchlist);
 
   const label = useMemo(() => {
@@ -28,7 +70,7 @@ const WatchlistButton = ({
     return added ? "Remove from Watchlist" : "Add to Watchlist";
   }, [added, type]);
 
-  // Handle adding/removing stocks from watchlist
+  // Server mutation: add or remove depending on current optimistic state
   const toggleWatchlist = async () => {
     const result = added
       ? await removeFromWatchlist(symbol)
@@ -44,14 +86,15 @@ const WatchlistButton = ({
       // Notify parent component of watchlist change for state synchronization
       onWatchlistChange?.(symbol, !added);
     }
+    // Note: If desired, handle server failure by reverting `setAdded(prev => !prev)`
   };
 
-  // Debounce the toggle function to prevent rapid API calls (300ms delay)
+  // Debounce the toggle function to avoid rapid-fire API calls on repeated clicks
   const debouncedToggle = useDebounce(toggleWatchlist, 300);
 
-  // Click handler that provides optimistic UI updates
+  // Click handler uses optimistic update + debounced server call
   const handleClick = (e: React.MouseEvent) => {
-    // Prevent event bubbling and default behavior
+    // Prevent row-level navigation (e.g., parent <TableRow onClick>)
     e.stopPropagation();
     e.preventDefault();
 

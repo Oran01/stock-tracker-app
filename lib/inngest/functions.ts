@@ -1,3 +1,27 @@
+/**
+ * File: lib/inngest/functions.ts
+ * Purpose: Inngest background functions for transactional emails (welcome)
+ *          and daily market news summaries (fetch → summarize via AI → email).
+ * Exports: `sendSignUpEmail`, `sendDailyNewsSummary`
+ *
+ * Key ideas:
+ * - Event-driven + cron-based orchestration using Inngest.
+ * - Steps are explicit (`step.run`, `step.ai.infer`) for observability and retries.
+ * - Finishes with Nodemailer delivery using HTML templates.
+ *
+ * @remarks
+ * - Privacy: Prompts include user metadata (country/goals/risk/industry). Avoid
+ *   including any additional PII. Log only non-sensitive data.
+ * - Idempotency: Inngest provides safe retries per step; ensure downstream
+ *   actions (like email) are effectively idempotent (e.g., step names + delivery logs).
+ * - Scheduling: Cron `"0 12 * * *"` runs at **12:00 UTC** daily (adjust content timing accordingly).
+ * - Dependencies: `getNews`, `getWatchlistSymbolsByEmail`, and mail templates must
+ *   remain stable; failures should be handled step-by-step to avoid aborting the batch.
+ *
+ * @see https://www.inngest.com/docs/functions
+ * @see https://www.inngest.com/docs/schedules/cron
+ */
+
 import { getNews } from "@/lib/actions/finnhub.actions";
 import { getAllUsersFormNewsEmail } from "@/lib/actions/user.actions";
 import { getWatchlistSymbolsByEmail } from "@/lib/actions/watchlist.actions";
@@ -9,6 +33,24 @@ import {
 import { sendNewsSummaryEmail, sendWelcomeEmail } from "@/lib/nodemailer";
 import { getFormattedTodayDate } from "@/lib/utils";
 
+/**
+ * Personalized welcome email on user creation.
+ * @summary Listens to `app/user.created`, generates an intro via AI from the user's
+ *          sign-up profile, and sends a welcome email via Nodemailer.
+ * @event app/user.created
+ * @steps
+ * - Build a small user profile snippet (country/goals/risk/industry).
+ * - `step.ai.infer`: generate friendly intro with Gemini 2.5 (flash-lite).
+ * - `step.run("send-welcome-email")`: deliver via `sendWelcomeEmail`.
+ * @returns `{ success: true, message: string }` on completion.
+ * @remarks
+ * - Fallback intro is used if the AI response is empty or unstructured.
+ * - Keep prompts minimal to reduce token usage and latency.
+ * - AI model: `gemini-2.5-flash-lite` for fast, low-cost text generation.
+ * - Avoid logging `event.data.email` directly; prefer masked logging if needed.
+ * @throws Network/SMTP errors during email delivery will be surfaced by the step.
+ * @see https://www.inngest.com/docs/functions/steps
+ */
 export const sendSignUpEmail = inngest.createFunction(
   { id: "sign-up-email" },
   { event: "app/user.created" },
@@ -61,6 +103,30 @@ export const sendSignUpEmail = inngest.createFunction(
   }
 );
 
+/**
+ * Daily personalized market news summaries.
+ * @summary Triggers by event (`app/send.daily.news`) or daily cron (`0 12 * * *`),
+ *          fetches per-user watchlist news, summarizes via AI, and emails results.
+ * @triggers
+ * - `app/send.daily.news` (manual/event-based)
+ * - Cron: `0 12 * * *` (12:00 UTC daily)
+ * @steps
+ * 1) `get-all-users`: fetch recipients for news delivery.
+ * 2) `fetch-user-news`: for each user, get watchlist symbols → fetch news (fallback to general).
+ * 3) `step.ai.infer`: summarize article list into HTML snippets per user.
+ * 4) `send-news-emails`: parallelized Nodemailer delivery with date + summary.
+ * @returns `{ success: boolean, message: string }` with a high-level status.
+ * @remarks
+ * - Caps articles per user to 6 to keep emails concise and within token limits.
+ * - `newsContent` is inserted as HTML; ensure upstream sanitization.
+ * - AI failures for a given user fall back to `"No market news."` content (or skip).
+ * - Cron executes in UTC; ensure “today” formatting via `getFormattedTodayDate()`.
+ * - Consider recording delivery outcomes (success/failure) for auditability/idempotency.
+ * @throws Upstream fetch/AI/SMTP errors are isolated by steps; the function continues
+ *         for other users whenever possible.
+ * @see https://www.inngest.com/docs/schedules/cron
+ * @see https://www.inngest.com/docs/functions/ai
+ */
 export const sendDailyNewsSummary = inngest.createFunction(
   { id: "daily-news-summary" },
   [{ event: "app/send.daily.news" }, { cron: "0 12 * * *" }],

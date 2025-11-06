@@ -1,3 +1,27 @@
+/**
+ * File: lib/actions/finnhub.actions.ts
+ * Purpose: Server actions and helpers for interacting with the Finnhub API:
+ *          market news, symbol search, and enriched stock details.
+ * Exports: `fetchJSON`, `getNews`, `searchStocks`, `getStocksDetails`
+ *
+ * Key ideas:
+ * - Uses Next.js `fetch` caching (`next.revalidate`) to balance freshness & API limits.
+ * - Respects auth: server actions read BetterAuth session from `headers()` and
+ *   redirect to `/sign-in` when absent (per UX).
+ * - Normalizes Finnhub responses into UI-friendly shapes via utils.
+ *
+ * @remarks
+ * - API keys: most functions prefer `FINNHUB_API_KEY` and fall back to `NEXT_PUBLIC_FINNHUB_API_KEY`.
+ *   Note: `getStocksDetails` uses `NEXT_PUBLIC_FINNHUB_API_KEY` directly.
+ *   Keep private keys server-side; only use `NEXT_PUBLIC_…` when intentionally exposing.
+ * - Auth scope: only actions that need a session perform auth/redirect (e.g., `searchStocks`);
+ *   others (e.g., `getNews`, `getStocksDetails`) do not require auth.
+ * - Rate limits: cache durations are tuned (e.g., profile 1h, metrics 30m) to reduce calls.
+ * - Error policy: fail fast on transport errors; return safe empties where appropriate.
+ *
+ * @see https://finnhub.io/docs/api
+ */
+
 "use server";
 
 import {
@@ -19,10 +43,22 @@ const FINNHUB_BASE_URL = "https://finnhub.io/api/v1";
 const NEXT_PUBLIC_FINNHUB_API_KEY =
   process.env.NEXT_PUBLIC_FINNHUB_API_KEY ?? "";
 
+/**
+ * Fetch JSON with optional ISR-style revalidation.
+ * @summary Wraps `fetch(url, { next: { revalidate } })` for typed JSON responses.
+ * @typeParam T - Expected JSON shape.
+ * @param url - Absolute endpoint URL.
+ * @param revalidateSeconds - If provided, enables Next.js cache with this TTL; otherwise `no-store`.
+ * @returns Parsed JSON as type `T`.
+ * @throws Error with status and body text when response is not OK.
+ * @example
+ * const quote = await fetchJSON<QuoteData>("https://finnhub.io/api/v1/quote?symbol=AAPL&token=…", 300);
+ */
 async function fetchJSON<T>(
   url: string,
   revalidateSeconds?: number
 ): Promise<T> {
+  // Use ISR-style revalidation when provided; otherwise disable caching for correctness
   const options: RequestInit & { next?: { revalidate?: number } } =
     revalidateSeconds
       ? { cache: "force-cache", next: { revalidate: revalidateSeconds } }
@@ -38,6 +74,19 @@ async function fetchJSON<T>(
 
 export { fetchJSON };
 
+/**
+ * Get market news, optionally personalized by symbol list.
+ * @summary For given symbols, fetch per-symbol company news and select up to 6 items round-robin;
+ *          otherwise fall back to general market news (deduped, capped, formatted).
+ * @param symbols - Optional array of symbols to personalize by; case/whitespace normalized.
+ * @returns Up to 6 `MarketNewsArticle` items, newest first.
+ * @remarks
+ * - Company news window uses the last 5 days (via `getDateRange(5)`).
+ * - Each symbol fetch is cached for 5 minutes (`revalidate: 300`); general news also 5 minutes.
+ * - Deduplication uses a composite key `{id-url-headline}` for safety across feeds.
+ * - Uses `validateArticle` before formatting; `formatArticle` trims & truncates summaries.
+ * @throws Error `"Failed to fetch news"` on transport failures (logged server-side).
+ */
 export async function getNews(
   symbols?: string[]
 ): Promise<MarketNewsArticle[]> {
@@ -73,7 +122,7 @@ export async function getNews(
       );
 
       const collected: MarketNewsArticle[] = [];
-      // Round-robin up to 6 picks
+      // Round-robin across symbols to avoid clumping all 6 from a single ticker
       for (let round = 0; round < maxArticles; round++) {
         for (let i = 0; i < cleanSymbols.length; i++) {
           const sym = cleanSymbols[i];
@@ -103,6 +152,7 @@ export async function getNews(
     const unique: RawNewsArticle[] = [];
     for (const art of general || []) {
       if (!validateArticle(art)) continue;
+      // Deduplicate conservatively across mixed feeds (ID/url/headline)
       const key = `${art.id}-${art.url}-${art.headline}`;
       if (seen.has(key)) continue;
       seen.add(key);
@@ -120,6 +170,20 @@ export async function getNews(
   }
 }
 
+/**
+ * Search stocks for the authenticated user with watchlist flags.
+ * @summary When `query` is empty, returns top popular profiles (10); otherwise
+ *          proxies Finnhub search and maps to a common shape with `isInWatchlist`.
+ * @param query - Optional free text; empty/whitespace triggers the “popular” branch.
+ * @returns Up to 15 items `{ symbol, name, exchange, type, isInWatchlist }`.
+ * @remarks
+ * - Auth required: may trigger a Next.js redirect to `/sign-in` if no BetterAuth session.
+ * - Popular branch fetches `/stock/profile2` per symbol (revalidate 1h).
+ * - Search branch uses `/search` (revalidate 30m).
+ * - Exchange is best-effort: derived from `displaySymbol` or `profile.exchange`, else "US".
+ * - Graceful failure: returns `[]` on missing API key or transport error.
+ * - Wrapped in React `cache(...)` to memoize across a request lifecycle and avoid duplicate calls.
+ */
 export const searchStocks = cache(
   async (query?: string): Promise<StockWithWatchlistStatus[]> => {
     try {
@@ -225,11 +289,29 @@ export const searchStocks = cache(
   }
 );
 
-// Fetch stock details by symbol
+/**
+ * Fetch enriched stock details for a single symbol.
+ * @summary Parallel requests for quote, profile, and metrics; maps to UI-ready fields
+ *          including formatted price, change %, market cap, and P/E.
+ * @param symbol - Raw ticker (will be trimmed & uppercased).
+ * @returns Object with:
+ *  - `symbol`, `company`, `currentPrice`, `changePercent`
+ *  - `priceFormatted`, `changeFormatted`, `marketCapFormatted`
+ *  - `peRatio` (string; "—" when unavailable)
+ * @remarks
+ * - Freshness: quote is `no-store`; profile (1h) and metrics (30m) are cached.
+ * - API key: this path uses `NEXT_PUBLIC_FINNHUB_API_KEY` directly.
+ * - Validity check: throws if missing critical fields (`quote.c` or `profile.name`).
+ * - Uses `formatPrice`, `formatChangePercent`, `formatMarketCapValue` for display.
+ * - Wrapped with React `cache(...)` to dedupe calls for the same `symbol` in a request.
+ * @throws Error `"Failed to fetch stock details"` on API/transport failure.
+ */
 export const getStocksDetails = cache(async (symbol: string) => {
   const cleanSymbol = symbol.trim().toUpperCase();
 
   try {
+    // Quote must be fresh; profile/metrics change slowly → cache to reduce rate-limit pressure
+    // Note: this call path uses NEXT_PUBLIC_FINNHUB_API_KEY directly
     const [quote, profile, financials] = await Promise.all([
       fetchJSON(
         // Price data - no caching for accuracy

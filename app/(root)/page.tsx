@@ -1,3 +1,28 @@
+/**
+ * File: app/(root)/page.tsx
+ * Purpose: Dashboard home page showing real-time market widgets powered by TradingView.
+ * Exports: <Home/> (server component)
+ *
+ * Key ideas:
+ * - Renders four primary TradingView widgets: Market Overview, Heatmap,
+ *   Top Stories, and Market Data.
+ * - Uses <TradingViewWidget/> to unify script loading, container setup,
+ *   configuration passing, and cleanup.
+ * - Layout is split into two vertical sections, each using a responsive grid.
+ *
+ * @remarks
+ * - This page is server-rendered but includes client-side widgets injected
+ *   at runtime via the TradingView embed script.
+ * - All widget configs live in `lib/constants.ts` to keep UI declarative.
+ * - You can adjust height and layout without touching embed logic.
+ * - The base TradingView script URL is composed dynamically using the
+ *   widget type (market-overview.js, timeline.js, etc.).
+ *
+ * @see https://www.tradingview.com/widget/timeline/
+ * @see https://www.tradingview.com/widget/market-overview/
+ * @see https://nextjs.org/docs/app/building-your-application/routing/pages-and-layouts
+ */
+
 import TradingViewWidget from "@/components/TradingViewWidget";
 import {
   HEATMAP_WIDGET_CONFIG,
