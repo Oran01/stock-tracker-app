@@ -44,6 +44,30 @@ The codebase is documented with TSDoc + inline comments following the **Style B 
 
 ---
 
+## 📸 Demo
+
+![Demo Screenshot](./public/assets/images/Untitled.png)
+
+---
+
+## 🌐 Live Demo
+
+[![Live Demo](https://img.shields.io/badge/Visit_Live_Demo-0A66C2?style=for-the-badge&logo=vercel&logoColor=white)](https://stock-tracker-app-psi-eight.vercel.app/sign-up)
+
+---
+
+### 🔍 Highlights
+
+- ✅ Real‑time TradingView charts, heatmaps, and market data
+- ✅ AI‑generated summaries (Gemini 2.5 Flash Lite)
+- ✅ Personalized watchlists with optimistic UI updates
+- ✅ Server Actions + Inngest background jobs (welcome email, daily news)
+- ✅ Secure authentication with Better Auth + middleware guard
+- ✅ Strong TypeScript typing + full TSDoc documentation
+- ✅ Modular, scalable folder structure for production teams
+
+---
+
 ## ✨ Features
 
 - 📈 **Market Overview**: heatmap, movers, and quotes
@@ -52,12 +76,6 @@ The codebase is documented with TSDoc + inline comments following the **Style B 
 - 🧠 **AI Emails**: daily news summaries per user via Inngest + Gemini
 - 🔐 **Auth**: Better Auth + cookie‑based edge middleware
 - 📊 **Stock Detail**: candlestick, baseline, technicals, profile, financials
-
----
-
-## 📸 Demo
-
-![Demo Screenshot](./public/assets/images/Untitled.png)
 
 ---
 
