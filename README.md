@@ -31,16 +31,13 @@ A full‑stack platform for tracking live stock data, managing personal watchlis
 
 ## 🧠 Overview
 
-**Signalist** is a production‑ready stock market dashboard that combines:
+**Signalist** is a modern, full-stack stock market dashboard built with Next.js and TypeScript.  
+It delivers real-time market insights, personalized watchlists, and AI-generated news summaries — all within a sleek, responsive interface.
 
-- Real‑time widgets (heatmap, news, quotes) via **TradingView**
-- Live search & company data via **Finnhub**
-- Personalized **watchlists** stored in MongoDB
-- **AI‑generated** daily news summaries (Gemini 2.5 Flash Lite)
-- Event‑driven jobs and CRON via **Inngest**
-- **Better Auth** for secure sessions (Next.js middleware‑guarded)
+Powered by **Finnhub**, **TradingView**, and **Google Gemini**, the platform combines live financial data with intelligent automation via **Inngest**.  
+Secure authentication is handled through **Better Auth**, and all user data is stored in **MongoDB** for reliable persistence.
 
-The codebase is documented with TSDoc + inline comments following the **Style B — Full Professional Detail** convention.
+Designed for developers, traders, and analysts who want to explore scalable event-driven architecture, seamless AI integration, and production-grade UI patterns in a financial analytics environment.
 
 ---
 
