@@ -24,6 +24,7 @@ A full‑stack platform for tracking live stock data, managing personal watchlis
 [![Finnhub](https://img.shields.io/badge/Finnhub-0055A4?style=for-the-badge)](https://finnhub.io/)
 [![TradingView](https://img.shields.io/badge/TradingView-1E90FF?style=for-the-badge&logo=tradingview&logoColor=fff)](https://tradingview.com/)
 [![Google Gemini](https://img.shields.io/badge/Google_Gemini-4285F4?style=for-the-badge&logo=google&logoColor=fff)](https://ai.google.dev/)
+[![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://vercel.com/)
 
 </div>
 
